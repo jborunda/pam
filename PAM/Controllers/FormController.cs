@@ -57,7 +57,6 @@ namespace PAM.Controllers
         public async Task<IActionResult> AddForm(Form form,IFormFile file)
         {
            await Upload(file);
-            Debug.WriteLine(file.FileName);
            _organizationService.AddForm(form);
            //since we dont have a refernce to pdf
            MapFormWithFile(form, file.FileName);
@@ -79,13 +78,14 @@ namespace PAM.Controllers
 
             var oldValue = JsonConvert.SerializeObject(form);
             _mapper.Map(update, form);
-            _organizationService.SaveChanges();
+
 
             if (file != null)
             {
-            await Upload(file);
-            MapFormWithFile(_organizationService.GetForm(id), file.FileName);
+                await Upload(file);
+                MapFormWithFile(_organizationService.GetForm(id), file.FileName);
             }
+            else { _organizationService.SaveChanges(); }
             
 
             var newValue = JsonConvert.SerializeObject(form);
@@ -101,13 +101,10 @@ namespace PAM.Controllers
         {
             var form = _organizationService.GetForm(id);
             form.Deleted = true;
-            
             _organizationService.SaveChanges();
-            Debug.WriteLine(form.Deleted);
             var identity = (ClaimsIdentity)User.Identity;
             await _auditLog.Append(identity.GetClaimAsInt("EmployeeId"), LogActionType.Remove, LogResourceType.Bureau, form.FormId,
                 $"{identity.GetClaim(ClaimTypes.Name)} removed bureau with id {form.FormId}");
-
             return RedirectToAction(nameof(Forms));
         }
 
@@ -148,11 +145,8 @@ namespace PAM.Controllers
 
         public ActionResult Download(int id)
         {
-            Debug.WriteLine("this is the Download action");
             var form = _organizationService.GetForm(id);
-            Debug.WriteLine("this is the form id " + form.FormId);
             var file = _organizationService.GetFile(form.FileId);
-            Debug.WriteLine("this is the file id " + file.Name);
             Stream stream = new MemoryStream(file.Content);
             return File(stream, "application/pdf", form.File.Name);
         }
@@ -162,8 +156,6 @@ namespace PAM.Controllers
             var file = _organizationService.GetFileByName(fileName.Substring(0, fileName.IndexOf(".pdf")));
             form.File = file;
             form.FileId = file.FileId;
-
-            Debug.WriteLine(file.FileId+ "*****");
             _organizationService.SaveChanges();
         }
     }
