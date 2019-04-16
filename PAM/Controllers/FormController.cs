@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,146 +13,134 @@ using PAM.Models;
 
 namespace PAM.Controllers
 {
+    [Authorize]
     public class FormController : Controller
     {
-
-        private readonly OrganizationService _organizationService;
-        private readonly AuditLogService _auditLog;
-        private readonly IMapper _mapper;
-        private readonly ILogger<BureauController> _logger;
+        private readonly FormService _formService;
         private readonly SystemService _systemService;
+        private readonly AuditLogService _auditLog;
+        private readonly ILogger<FormController> _logger;
 
-        public FormController(SystemService systemService, OrganizationService organizationService, AuditLogService auditLog, IMapper mapper, ILogger<BureauController> logger)
+        public FormController(FormService formService, SystemService systemService, AuditLogService auditLog, ILogger<FormController> logger)
         {
+            _formService = formService;
             _systemService = systemService;
-            _organizationService = organizationService;
             _auditLog = auditLog;
-            _mapper = mapper;
             _logger = logger;
         }
 
-
         public IActionResult Forms()
         {
-            return View( _organizationService.GetForms());
+            return View(_formService.GetForms());
         }
 
-        public IActionResult DetailsForm(int id)
+        public IActionResult ViewForm(int id)
         {
-            ViewData["Systems"] = _systemService.GetSystemFormsByFormId(id);
-            return View(_organizationService.GetForm(id));
+            return View(_formService.GetForm(id));
         }
 
-        [HttpGet]
+        [HttpGet, Authorize("IsAdmin")]
         public IActionResult AddForm()
         {
-            return View();
+            ViewData["systems"] = JsonConvert.SerializeObject(_systemService.GetSystems());
+            return View(new Form());
         }
 
-        [HttpPost]
-        public async Task<IActionResult> AddForm(Form form,IFormFile file)
+        [HttpPost, Authorize("IsAdmin")]
+        public async Task<IActionResult> AddForm(Form form, List<int> systemIds, IFormFile uploadedFile)
         {
-           await Upload(file);
-           _organizationService.AddForm(form);
-           //since we dont have a refernce to pdf
-           MapFormWithFile(form, file.FileName);
-           return RedirectToAction(nameof(DetailsForm), new { id = form.FormId});
+            var file = uploadedFile != null ? await saveFile(uploadedFile) : null;
+            if (file != null) form.FileId = file.FileId;
+            form = _formService.AddForm(form);
+            if (systemIds.Count > 0)
+            {
+                foreach (var systemId in systemIds)
+                    form.Systems.Add(new SystemForm(systemId, form.FormId));
+                _formService.SaveChanges();
+            }
+
+            var identity = (ClaimsIdentity)User.Identity;
+            await _auditLog.Append(identity.GetClaimAsInt("EmployeeId"), LogActionType.Create, LogResourceType.Form, form.FormId,
+                $"{identity.GetClaim(ClaimTypes.Name)} created form with id {form.FormId}");
+
+            return RedirectToAction(nameof(ViewForm), new { id = form.FormId });
         }
 
         [HttpGet, Authorize("IsAdmin")]
         public IActionResult EditForm(int id)
         {
-            ViewData["Systems"] = _systemService.GetSystemFormsByFormId(id);
-            return View(_organizationService.GetForm(id));
+            ViewData["systems"] = JsonConvert.SerializeObject(_systemService.GetSystems());
+            return View(_formService.GetForm(id));
         }
 
         [HttpPost, Authorize("IsAdmin")]
-        public async Task<IActionResult> EditForm(int id, Form update, IFormFile file)
+        public async Task<IActionResult> EditForm(int id, Form update, IFormFile uploadedFile)
         {
-            
-            var form = _organizationService.GetForm(id);
+            var file = uploadedFile != null ? await saveFile(uploadedFile) : null;
 
-            var oldValue = JsonConvert.SerializeObject(form);
-            _mapper.Map(update, form);
+            var form = _formService.GetForm(id);
 
+            var oldValue = JsonConvert.SerializeObject(form, Formatting.Indented);
+            form.Name = update.Name;
+            form.DisplayOrder = update.DisplayOrder;
+            form.ForEmployeeOnly = update.ForEmployeeOnly;
+            form.ForContractorOnly = update.ForContractorOnly;
+            if (file != null) form.FileId = file.FileId;
+            _systemService.SaveChanges();
+            var newValue = JsonConvert.SerializeObject(form, Formatting.Indented);
 
-            if (file != null)
-            {
-                await Upload(file);
-                MapFormWithFile(_organizationService.GetForm(id), file.FileName);
-            }
-            else { _organizationService.SaveChanges(); }
-            
-
-            var newValue = JsonConvert.SerializeObject(form);
             var identity = (ClaimsIdentity)User.Identity;
-            await _auditLog.Append(identity.GetClaimAsInt("EmployeeId"), LogActionType.Update, /*this needs to be changed to form*/LogResourceType.Bureau, form.FormId,
-                $"{identity.GetClaim(ClaimTypes.Name)} updated bureau with id {form.FormId}", oldValue, newValue);
+            await _auditLog.Append(identity.GetClaimAsInt("EmployeeId"), LogActionType.Update, LogResourceType.Form, form.FormId,
+                $"{identity.GetClaim(ClaimTypes.Name)} updated form with id {form.FormId}", oldValue, newValue);
 
-            return RedirectToAction(nameof(DetailsForm), new { id });
+            return RedirectToAction(nameof(ViewForm), new { id });
+        }
+
+        public IActionResult DownloadForm(int id)
+        {
+            var form = _formService.GetForm(id);
+            if (form.FileId == null)
+                return NotFound();
+
+            var file = _formService.GetFile((int)form.FileId);
+            return File(file.Content, file.ContentType, file.Name);
         }
 
         [Authorize("IsAdmin")]
         public async Task<IActionResult> RemoveForm(int id)
         {
-            var form = _organizationService.GetForm(id);
+            var form = _formService.GetForm(id);
             form.Deleted = true;
-            _organizationService.SaveChanges();
+            _formService.SaveChanges();
+
             var identity = (ClaimsIdentity)User.Identity;
-            await _auditLog.Append(identity.GetClaimAsInt("EmployeeId"), LogActionType.Remove, LogResourceType.Bureau, form.FormId,
-                $"{identity.GetClaim(ClaimTypes.Name)} removed bureau with id {form.FormId}");
+            await _auditLog.Append(identity.GetClaimAsInt("EmployeeId"), LogActionType.Remove, LogResourceType.Form, form.FormId,
+                $"{identity.GetClaim(ClaimTypes.Name)} removed form with id {form.FormId}");
+
             return RedirectToAction(nameof(Forms));
         }
 
-        public FileStreamResult ViewForm(int id)
+        private async Task<Models.File> saveFile(IFormFile uploadedFile)
         {
-            var formData = _organizationService.GetForm(id);
-            Stream stream = new MemoryStream(formData.File.Content);
-            return new FileStreamResult(stream, formData.Name);
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Upload(IFormFile fileUpload)
-        {
-            long size = fileUpload.Length;
-            var filePath = Path.GetTempFileName();
-            var pdfFileName = Path.GetFileNameWithoutExtension(fileUpload.FileName);
-            if (fileUpload.Length > 0)
+            var file = new Models.File()
             {
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await fileUpload.CopyToAsync(stream);
-                }
-            }
-            var saveFile = new PAM.Models.File
-            {
-                Name = pdfFileName,
-                ContentType = fileUpload.ContentType,
-                Length = fileUpload.Length,
+                Name = Path.GetFileName(uploadedFile.FileName),
+                ContentType = uploadedFile.ContentType,
+                Length = uploadedFile.Length
             };
             using (var memoryStream = new MemoryStream())
             {
-                await fileUpload.CopyToAsync(memoryStream);
-                saveFile.Content = memoryStream.ToArray();
+                await uploadedFile.CopyToAsync(memoryStream);
+                file.Content = memoryStream.ToArray();
             }
-            _organizationService.AddFile(saveFile);
-            return Ok(new { size, filePath });
-        }
 
-        public ActionResult Download(int id)
-        {
-            var form = _organizationService.GetForm(id);
-            var file = _organizationService.GetFile(form.FileId);
-            Stream stream = new MemoryStream(file.Content);
-            return File(stream, "application/pdf", form.File.Name);
-        }
+            file = _formService.AddFile(file);
 
-        public void MapFormWithFile(Form form, String fileName)
-        {
-            var file = _organizationService.GetFileByName(fileName.Substring(0, fileName.IndexOf(".pdf")));
-            form.File = file;
-            form.FileId = file.FileId;
-            _organizationService.SaveChanges();
+            var identity = (ClaimsIdentity)User.Identity;
+            await _auditLog.Append(identity.GetClaimAsInt("EmployeeId"), LogActionType.Upload, LogResourceType.File, file.FileId,
+                $"{identity.GetClaim(ClaimTypes.Name)} uploaded file with id {file.FileId}");
+
+            return file;
         }
     }
 }

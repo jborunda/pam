@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PAM.Models
 {
-    public enum LogActionType { Create, Update, Remove, Submit, Approve, Deny };
-    public enum LogResourceType { Bureau, Location, System, Unit, ProcessingUnit, User, Request };
+    public enum LogActionType { Create, Update, Remove, Submit, Approve, Deny, Process, Confirm, Upload };
+    public enum LogResourceType { Bureau, Location, System, Unit, SupportUnit, User, Request, SystemAccess, Form, File };
 
     [Table("AuditLog")]
     public class AuditLogEntry

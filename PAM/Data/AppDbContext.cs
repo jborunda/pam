@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using PAM.Models;
@@ -20,7 +19,7 @@ namespace PAM.Data
         public DbSet<Bureau> Bureaus { get; set; }
         public DbSet<UnitType> UnitTypes { get; set; }
         public DbSet<Unit> Units { get; set; }
-        public DbSet<ProcessingUnit> ProcessingUnits { get; set; }
+        public DbSet<SupportUnit> SupportUnits { get; set; }
         public DbSet<Models.System> Systems { get; set; }
         public DbSet<Employee> Employees { get; set; }
         public DbSet<RequestType> RequestTypes { get; set; }
@@ -32,7 +31,6 @@ namespace PAM.Data
         public DbSet<File> Files { get; set; }
         public DbSet<Form> Forms { get; set; }
         public DbSet<AuditLogEntry> AuditLog { get; set; }
-        public DbSet<SystemForm> SystemForms { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -46,8 +44,9 @@ namespace PAM.Data
             modelBuilder.Entity<Unit>().Property(u => u.Deleted).HasDefaultValue(false);
             modelBuilder.Entity<Unit>().HasQueryFilter(u => !u.Deleted);
 
-            modelBuilder.Entity<ProcessingUnit>().Property(u => u.Deleted).HasDefaultValue(false);
-            modelBuilder.Entity<ProcessingUnit>().HasQueryFilter(u => !u.Deleted);
+            modelBuilder.Entity<SupportUnit>().HasAlternateKey(u => u.Email);
+            modelBuilder.Entity<SupportUnit>().Property(u => u.Deleted).HasDefaultValue(false);
+            modelBuilder.Entity<SupportUnit>().HasQueryFilter(u => !u.Deleted);
 
             modelBuilder.Entity<Models.System>().Property(s => s.Retired).HasDefaultValue(false);
             modelBuilder.Entity<Models.System>().HasQueryFilter(s => !s.Retired);

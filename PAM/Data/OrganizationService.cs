@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -18,53 +17,11 @@ namespace PAM.Data
             _logger = logger;
         }
 
-
-
-        //-------------------------------------------------------------------------------------------------
-        public List<Form> GetForms()
-        {
-            return _dbContext.Forms.OrderBy(f => f.DisplayOrder).ToList();
-        }
-
-        public Form GetForm(int id)
-        {
-            return _dbContext.Forms.Find(id);
-        }
-        public void AddForm(Form form)
-        {
-            _dbContext.Forms.Add(form);
-            _dbContext.SaveChanges();
-        }
-
-        public Form GetFileByForm(string name)
-        {
-            return _dbContext.Forms.Where(f => f.Name == name).Include(f => f.File).FirstOrDefault();
-        }
-        public File GetFile(int? id)
-        {
-            return _dbContext.Files.Where(f => f.FileId == id).FirstOrDefault();
-        }
-
-        public ICollection<Form> GetAllForms()
-        {
-            return _dbContext.Forms.ToList();
-        }
-        public void AddFile(File file)
-        {
-            _dbContext.Files.Add(file);
-            _dbContext.SaveChanges();
-        }
-        public File GetFileByName(string name)
-        {
-            return _dbContext.Files.Where(f => f.Name == name).FirstOrDefault();
-        }
-     
-        //-------------------------------------------------------------------------------------------------
         public ICollection<Location> GetLocations()
         {
             return _dbContext.Locations.OrderBy(l => l.Name).ToList();
         }
-        
+
         public Location GetLocation(int id)
         {
             return _dbContext.Locations.Find(id);
@@ -136,19 +93,19 @@ namespace PAM.Data
             return _dbContext.Units.Where(u => u.ParentId == parentId).ToList();
         }
 
-        public ICollection<ProcessingUnit> GetProcessingUnits()
+        public ICollection<SupportUnit> GetSupportUnits()
         {
-            return _dbContext.ProcessingUnits.ToList();
+            return _dbContext.SupportUnits.ToList();
         }
 
-        public ProcessingUnit GetProcessingUnit(int id)
+        public SupportUnit GetSupportUnit(int id)
         {
-            return _dbContext.ProcessingUnits.Find(id);
+            return _dbContext.SupportUnits.Find(id);
         }
 
-        public ProcessingUnit AddProcessingUnit(ProcessingUnit unit)
+        public SupportUnit AddSupportUnit(SupportUnit unit)
         {
-            _dbContext.ProcessingUnits.Add(unit);
+            _dbContext.SupportUnits.Add(unit);
             _dbContext.SaveChanges();
             return unit;
         }
@@ -157,7 +114,5 @@ namespace PAM.Data
         {
             _dbContext.SaveChanges();
         }
-
-      
     }
 }

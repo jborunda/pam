@@ -1,13 +1,6 @@
-﻿@model ICollection<Form>
+﻿@model IList<Form>
 @{
   ViewData["Title"] = "Forms";
-}
-@section StyleSheets{
-  <link rel="stylesheet" href="~/lib/bootstrap-table/bootstrap-table.min.css">
-}
-@section Scripts{
-  <script src="~/lib/core-js/core.min.js"></script>
-  <script src="~/lib/bootstrap-table/bootstrap-table.min.js"></script>
 }
 
 <nav aria-label="breadcrumb">
@@ -18,48 +11,39 @@
 
 @if ((await AuthorizationService.AuthorizeAsync(User, "IsAdmin")).Succeeded)
 {
-  <p><a asp-action="AddForm" class="btn btn-primary float-right">Add Form</a></p>
+  <p><a asp-action="AddForm" class="btn btn-primary float-right mb-3">Add Form</a></p>
 }
 
-
-<table data-toggle="table" data-search="true" data-search-align="left">
+<table class="table table-bordered table-hover">
   <thead>
     <tr>
-      <th>ID</th>
-      <th class="d-none d-md-table-cell text-nowrap">Name</th>
-      <th class="d-none d-sm-table-cell">Display Order</th>
-      <th class="d-none d-sm-table-cell">DownLoad</th>
-      @if ((await AuthorizationService.AuthorizeAsync(User, "IsAdmin")).Succeeded)
-      {
-        <th></th>
-      }
+      <th>Name</th>
+      <th>Systems</th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
-    @foreach (var Form in Model)
+    @foreach (var form in Model)
     {
       <tr>
-        <td>
-          <a asp-action="DetailsForm" asp-route-id="@Form.FormId">@Form.FormId</a>
-        </td>
-
-        <td class="d-none d-sm-table-cell">@Form.Name</td>
-        <td class="d-none d-sm-table-cell">@Form.DisplayOrder</td>
-        <td>
-          <a asp-action="Download" asp-route-id="@Form.FormId" class="btn btn-primary">
-            <i class="fas fa-arrow-circle-down"></i>
-            <span class="d-none d-md-inline"></span>
-          </a>
-        </td>
-        @if ((await AuthorizationService.AuthorizeAsync(User, "IsAdmin")).Succeeded)
-        {
-          <td>
-            <a asp-action="EditForm" asp-route-id="@Form.FormId" class="btn btn-primary">
+        <td><a asp-action="ViewForm" asp-route-id="@form.FormId">@form.Name</a></td>
+        <td>@form.Systems.Count</td>
+        <td class="text-nowrap">
+          @if ((await AuthorizationService.AuthorizeAsync(User, "IsAdmin")).Succeeded)
+          {
+            <a asp-action="EditForm" asp-route-id="@form.FormId" class="btn btn-primary mr-2">
               <i class="fas fa-edit"></i>
-              <span class="d-none d-md-inline">Edit</span>
+              <span class="d-none d-lg-inline">Edit</span>
             </a>
-          </td>
-        }
+          }
+          @if (form.FileId != null)
+          {
+            <a asp-action="DownloadForm" asp-route-id="@form.FormId" class="btn btn-primary">
+              <i class="fas fa-file-download"></i>
+              <span class="d-none d-lg-inline">Download</span>
+            </a>
+          }
+        </td>
       </tr>
     }
   </tbody>

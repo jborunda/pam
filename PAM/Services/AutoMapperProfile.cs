@@ -7,7 +7,6 @@ namespace PAM.Services
     {
         public AutoMapperProfile()
         {
-            CreateMap<Form, Form>().ForMember(l => l.FormId, opt => opt.Ignore());
             CreateMap<Location, Location>().ForMember(l => l.LocationId, opt => opt.Ignore());
             CreateMap<Bureau, Bureau>().ForMember(b => b.BureauId, opt => opt.Ignore());
             CreateMap<Models.System, Models.System>().ForMember(s => s.SystemId, opt => opt.Ignore());

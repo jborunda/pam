@@ -20,5 +20,19 @@
   <tr><th>Name</th><td>@Model.Name</td></tr>
   <tr><th>Description</th><td>@Model.Description</td></tr>
   <tr><th>Owner</th><td>@Model.Owner</td></tr>
-  <tr><th>Processing Unit</th><td>@Model.ProcessingUnit?.Name</td></tr>
+  <tr><th>Support Unit</th><td>@Model.SupportUnit?.Name</td></tr>
+  <tr>
+    <th>Forms</th>
+    <td>
+      @if (Model.Forms.Count > 0)
+      {
+        <ul>
+          @foreach (var form in Model.Forms.OrderBy(f => f.Form.DisplayOrder).ThenBy(f => f.Form.FormId))
+          {
+            <li><a asp-controller="Form" asp-action="ViewForm" asp-route-id="@form.FormId">@form.Form.Name</a></li>
+          }
+        </ul>
+      }
+    </td>
+  </tr>
 </table>
